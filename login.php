@@ -19,7 +19,7 @@
 //
 //
 
-include '.inc/config.php';
+include_once '.inc/config.php';
 
 $username = $password = $err = '';
 $focus = 'username';
@@ -36,12 +36,17 @@ function cleanUp($string) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST'){
     $username = $_REQUEST['username'];
     $password = $_REQUEST['password'];
-    $ua = $_SERVER['HTTP_USER_AGENT'];
-    $ua .= rand(0,4200);
-    $id = md5($ua);
+    $ua       = $_SERVER['HTTP_USER_AGENT'];
+    $rqt      = $_SERVER['REQUEST_TIME'];
+    $rqaddr   = $_SERVER['REMOTE_ADDR'];
+    $max      = mt_getrandmax();
+    $rqt     .= mt_rand(0,$max);
+    $rqaddr  .= mt_rand(0,$max);
+    $ua      .= mt_rand(0,$max);
+    $cmpid    = $rqt . $rqaddr . $ua;
+    $id       = md5($cmpid);
     $db = mysql_connect($dbHost,$dbUser,$dbPass);
     $link = mysql_select_db($dbName, $db);
-
     if ($link) {
         $user = cleanUp($username);
         $query = "SELECT * FROM user_info WHERE username = '$user'";
@@ -56,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST'){
                 $userEmail      = $row[4];
                 $userType       = $row[5];
                 $userTime       = $row[6];
+                $tzoffset	= $row[7];
             }
             // The first 2 chars are the salt     
             $theSalt = substr($userHash, 0,2);
@@ -76,11 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST'){
                     $_SESSION['initiated'] = true;
                 }
 
-                $_SESSION['sLogin']	= '1';
+                $_SESSION['sLogin']	= 1;
                 $_SESSION['sUser']	= $userName;
+                $_SESSION['sPass']	= $password;        
                 $_SESSION['sEmail']	= $userEmail;
                 $_SESSION['sType']      = $userType;
                 $_SESSION['sTime']	= $userTime;
+                $_SESSION['tzoffset']   = $tzoffset;
                 $_SESSION['sTab']       = 't_sum';
                 $_SESSION['id']         = $id;
                 
@@ -108,10 +116,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST'){
 </head>
 <body>
 <form name=credcheck method=post action=login.php>
-<br><br><br><br><br>
+<div class=box>
 <table class=boxes width=450 align=center cellpadding=1 cellspacing=0>
 <tr><td colspan=2 class=header>
-SQueRT - Please login to continue</td></tr>
+squert - Please login to continue</td></tr>
 <tr><td colspan=2 class=boxes>
 Username<br>
 <input class=in type=text name=username value="<?php echo htmlentities($username);?>" maxlength="32"></td></tr>
@@ -122,7 +130,8 @@ Password<br>
 <input id=logmein name=logmein class=rb type=submit name=login value=submit><br><br></td>
 <td class=err><?php echo $err;?></td></tr>
 </table>
-<div class=cp>Version 1.1.2<span>&copy;2013 Paul Halliday</span></div>
+<div class=cp>Version 1.6.0<span>&copy;2015 Paul Halliday</span></div>
+</div>
 </form>
 <script type="text/javascript">document.credcheck.<?php echo $focus;?>.focus();</script>
 </body>

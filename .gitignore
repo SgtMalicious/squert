@@ -8,6 +8,9 @@
 .images
 .js/config.js
 *.swp
+*.swo
 tests
 *.old
 play
+test.html
+composer.*

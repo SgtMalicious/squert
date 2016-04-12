@@ -1,10 +1,45 @@
-# SQueRT - A Simple Query and Report Tool
+# squert - A Simple Query and Report Tool
 
 Home: [http://www.squertproject.org](http://www.squertproject.org)
 
-Demo: [https://demo.sguil.net](https://demo.sguil.net)
+Demo: [https://demo.sguil.net](https://demo.sguil.net) currently offline
+
 * Login: sguil
 * Password: demo
+
+Talk: [Version 1.3 @CANHEIT 2014](http://www.pintumbler.org/squert-canheit2014.pdf)
+
+Intro: [http://www.youtube.com/watch?v=ZOsVw96XM8E](http://www.youtube.com/watch?v=ZOsVw96XM8E)
+
+Changes v1.1.6: [http://www.youtube.com/watch?v=_eheJv0MJDY](http://www.youtube.com/watch?v=_eheJv0MJDY)
+
+Changes v1.1.9: [http://www.youtube.com/watch?v=QkgrigopfQA](http://www.youtube.com/watch?v=QkgrigopfQA)
+
+Changes v1.2.0: Cleanup. Removed fixed credentials in sguil helpers.
+
+Changes v1.3.0: 
+
+* ElasticSearch queries (Bro) 
+* Autocat editor 
+* Significant interface changes
+
+See: [Changes v1.3.0](http://www.squertproject.org/summaryofchangesforsquertversion130)
+
+Changes v1.4.0:
+
+* URLs
+* Moved to menu on click
+* Bugfixes
+
+See: [Changes v1.4.0](http://www.squertproject.org/summaryofchangesforsquertversion140)
+
+Changes v1.5.0
+
+* Control layout changes
+* Object colouring from context menu
+* Bugfixes
+
+See: [Changes v1.5.0](http://www.squertproject.org/summaryofchangesforsquertversion150)
 
 
 ## Description
@@ -13,10 +48,10 @@ SQueRT is a tool that is used to query event data
 
 ## Requirements
 
-* A working Sguil installation [http://sguil.net](http://sguil.net). If you use Security Onion [http://securityonion.blogspot.ca](http://securityonion.blogspot.ca) you can get everything setup rather quickly.
+* Sguil 0.9.0 [http://sguil.net](http://sguil.net). If you use Security Onion [http://securityonion.blogspot.ca](http://securityonion.blogspot.ca) you can get everything setup rather quickly.
   
 
-* PHP5 with CLI
+* PHP55 with CLI
 	* mysql
 * TCL, TclX
 	* mysqltcl
@@ -25,6 +60,16 @@ SQueRT is a tool that is used to query event data
 	* ftp::geturl
 	* md5
 * MySQL client
+
+## Upgrade
+
+You will need to run these commands:
+
+`mysql> ALTER TABLE filters ADD type VARCHAR(16) FIRST;`
+
+`mysql> ALTER TABLE filters ADD INDEX type (type);`
+
+`mysql> UPDATE filters SET type = 'filter' WHERE type IS NULL;`
 
 ## Install
 
@@ -68,46 +113,48 @@ Performance WILL suffer if you do not do this.
 
 `cat squert/.scripts/squert.sql | mysql -uroot -p -U sguildb`
 
-6) Create a mysql user account with readonly access to sguildb (what you set in step 3):
+6) Create a mysql user account for squert to access sguildb (what you set in step 3):
 
-`mysql -N -B --user=root -p -e "GRANT SELECT ON sguildb.* TO 'readonly'@'localhost' IDENTIFIED BY 'apassword';"`
+`mysql -N -B --user=root -p -e "GRANT SELECT ON sguildb.* TO 'squert_user'@'localhost' IDENTIFIED BY 'apassword';"`
 
 7) Give this user privileges to the ip2c table:
 
-`mysql -N -B --user=root -p -e "GRANT ALL PRIVILEGES ON sguildb.ip2c TO 'readonly'@'localhost';"`
+`mysql -N -B --user=root -p -e "GRANT ALL PRIVILEGES ON sguildb.ip2c TO 'squert_user'@'localhost';"`
 
 8) Give this user privileges to the mappings table:
 
-`mysql -N -B --user=root -p -e "GRANT ALL PRIVILEGES ON sguildb.mappings TO 'readonly'@'localhost';"`
+`mysql -N -B --user=root -p -e "GRANT ALL PRIVILEGES ON sguildb.mappings TO 'squert_user'@'localhost';"`
 
 9) Give this user privileges to the filters table:
 
-`mysql -N -B --user=root -p -e "GRANT INSERT,UPDATE,DELETE ON sguildb.filters TO 'readonly'@'localhost';"` 
+`mysql -N -B --user=root -p -e "GRANT INSERT,UPDATE,DELETE ON sguildb.filters TO 'squert_user'@'localhost';"` 
 
-10) Now populate the ip2c table:
+10) Give this user privileges to sguils user_info table:
+
+`mysql -N -B --user=root -p -e "GRANT UPDATE ON sguildb.user_info TO 'squert_user'@'localhost';"`;
+
+11) Now populate the ip2c table:
 
 `squert/.scripts/ip2c.tcl`
 
-11) Add an index to comment column in Sguils history table:
+12) Add an index to comment column in Sguils history table:
 
 `mysql -N -B --user=root -p -e "CREATE INDEX comment ON sguildb.history (comment(50));"`
 
-12) The readonly user needs DELETE access to sguils history table (to delete comments):
+13) The readonly user needs DELETE access to sguils history table (to delete comments):
 
 `mysql -N -B --user=root -p -e "GRANT DELETE on sguildb.history to 'readonly'@'localhost';"`
 
-13) Create a scheduled task to keep the mappings tables up to date:
+14) Create a scheduled task to keep the mappings tables up to date:
 
 `*/5     *       *       *       *       /usr/local/bin/php -e /usr/local/www/squert/.inc/ip2c.php 1 > /dev/null 2>&1`
 
 This entry updates the database every 5 minutes. Make sure you use the correct paths to php and ip2c.php.
 
-14) Create a scheduled task to keep the ip2c table up to date:
+15) Create a scheduled task to keep the ip2c table up to date:
 
 `0	0	1	*	*       <path_to_squert>/.scripts/ip2c.tcl > /dev/null 2>&1`
 
 This entry updates the ip2c database on the first day of every month.
-
-
 
 That's it. Point your browser to https://yourhost/squert

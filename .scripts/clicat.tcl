@@ -1,4 +1,4 @@
-#!/usr/bin/env tclsh
+#!/usr/local/bin/tclsh
 
 # clicat.tcl - Based on "quickscript.tcl"
 # Portions Copyright (C) 2013 Paul Halliday <paul.halliday@gmail.com>
@@ -30,36 +30,92 @@ if {[file exists $CONFIG]} {
     set VERSION  $configArray(sgVer)
     set SERVER   $configArray(sgHost)
     set PORT     $configArray(sgPort)
-    set USERNAME $configArray(sgUser)
-    set PASSWD   $configArray(sgPass)
 } else {
     puts "ERROR: No configuration file found"
     exit 1
 }
 
-if { $argc == 3 } {
-    set CAT [lindex $argv 0]
-    set MSG [lindex $argv 1]
-    set LST [lindex $argv 2]
-} else {
-    puts "ERROR: Not enough arguments"
-    exit 1
+### Types:
+# 0 = categorize            DeleteEventIDList status comment sid.cid list
+# 1 = new autocat rule      AutoCatRequest erase sensor sip sport dip dport proto sig status comment
+# 2 = enable autocat rule   EnableAutoCatRule id
+# 3 = disable autocat rule  DisableAutoCatRule id
+
+set TYPE [lindex $argv 0]
+
+switch $TYPE {
+    0 {
+        if { $argc == 5 } {
+            set USR [lindex $argv 1]
+            set CAT [lindex $argv 2]
+            set MSG [lindex $argv 3]
+            set LST [lindex $argv 4]
+        } else {
+            puts "ERROR: Not enough arguments"
+            exit 1
+        } 
+ 
+        # Verify event category
+        set validCats {1 2 11 12 13 14 15 16 17}
+        if { [lsearch -exact $validCats $CAT] == -1 } {
+            puts "ERROR: Invalid event category"
+            exit 1
+        }
+
+        # Verify event list
+        if { ![regexp -expanded {^(\d+\.\d+,){0,}(\d+\.\d+$){1}} $LST match] } {
+            puts "ERROR: List format error"
+            exit 1
+        } else {
+            set SCIDLIST [split $LST ,] 
+        }
+        set COMMAND [list DeleteEventIDList $CAT $MSG $SCIDLIST]
+    }
+    1 {
+        if { $argc == 12 } {
+            set USR [lindex $argv 1]
+            set EXP [lindex $argv 2]
+            set SEN [lindex $argv 3]
+            set SIP [lindex $argv 4]
+            set SPT [lindex $argv 5]
+            set DIP [lindex $argv 6]
+            set DPT [lindex $argv 7]
+            set PRT [lindex $argv 8]
+            set SIG [lindex $argv 9]
+            set STA [lindex $argv 10]
+            set CMT [lindex $argv 11] 
+        } else {
+            puts "ERROR: Not enough arguments"
+            exit 1
+        }
+        set COMMAND [list AutoCatRequest $EXP $SEN $SIP $SPT $DIP $DPT $PRT $SIG $STA $CMT]
+    }
+    2 {
+        if { $argc == 3 } {
+            set USR [lindex $argv 1]
+            set AID [lindex $argv 2]
+        } else {
+            puts "ERROR: Not enough arguments"
+            exit 1
+        }
+        set COMMAND [list EnableAutoCatRule $AID]
+    }
+    3 {
+        if { $argc == 3 } {
+            set USR [lindex $argv 1]
+            set AID [lindex $argv 2]
+        } else {
+            puts "ERROR: Not enough arguments"
+            exit 1
+        }
+        set COMMAND [list DisableAutoCatRule $AID]
+    }
+    default { 
+        puts "ERROR: No type match was found"
+        exit 1 
+    }
 }
 
-# Verify event category
-set validCats {1 2 11 12 13 14 15 16 17}
-if { [lsearch -exact $validCats $CAT] == -1 } {
-    puts "ERROR: Invalid event category"
-    exit 1
-}
-
-# Verify event list
-if { ![regexp -expanded {^(\d+\.\d+,){0,}(\d+\.\d+$){1}} $LST match] } {
-    puts "ERROR: List format error"
-    exit 1
-} else {
-    set SCIDLIST [split $LST ,] 
-}
 
 #########################################################################
 # Package/Extension Requirements
@@ -164,8 +220,7 @@ if { $serverVersion != $VERSION } {
 SendToSguild $socketID [list VersionInfo $VERSION]
 
 # SSL-ify the socket
-if { [catch {tls::import $socketID} tlsError] } { 
-
+if { [catch {tls::import $socketID -ssl2 false -ssl3 false -tls1 true } tlsError] } { 
     puts "ERROR: $tlsError"
     exit 1
 
@@ -179,8 +234,15 @@ SendToSguild $socketID "PING"
 # Get the PONG
 set INIT [gets $socketID]
 
+#
+# Auth starts here
+#
+
+# Get users password
+set PWD [gets stdin]
+
 # Authenticate with sguild
-SendToSguild $socketID [list ValidateUser $USERNAME $PASSWD]
+SendToSguild $socketID [list ValidateUser $USR $PWD]
 
 # Get the response. Success will return the users ID and failure will send INVALID.
 if { [catch {gets $socketID} authMsg] } { 
@@ -198,9 +260,9 @@ if { $authResults == "INVALID" } {
 
 }
 
-# Send SCID list to Sguild (this needs some debug :/)
-SendToSguild $socketID [list DeleteEventIDList $CAT $MSG $SCIDLIST]
+# Send command to sguild
+SendToSguild $socketID $COMMAND
 
 catch {close $socketID} 
-puts "0"
+puts -nonewline "0"
 exit 0

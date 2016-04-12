@@ -25,12 +25,12 @@ session_start();
 function sKill() {
     session_destroy();
     session_unset();
-    header ("Location: login.php");
+    header ("Location: /squert/login.php");
     exit();
 }
 
 function sInt() {
-     header ("Location: login.php");
+     header ("Location: /squert/login.php");
      exit();
 }
 
@@ -39,11 +39,13 @@ if (!(isset($_SESSION['sLogin']) && $_SESSION['sLogin'] != '')) {
 }
 
 // Session variables
-if (!isset($_SESSION['sUser'])) { sInt(); } else { $sUser  = $_SESSION['sUser'];}
-if (!isset($_SESSION['sEmail'])) { sInt(); } else { $sEmail = $_SESSION['sEmail'];}
-if (!isset($_SESSION['sType'])) { sInt(); } else { $sType  = $_SESSION['sType'];}
-if (!isset($_SESSION['sTab'])) { sInt(); } else { $sTab   = $_SESSION['sTab'];}
-if (!isset($_REQUEST['id'])) { $id = 0; } else { $id     = $_REQUEST['id'];}
+if (!isset($_SESSION['sUser']))    { sInt();  } else { $sUser    = $_SESSION['sUser'];}
+if (!isset($_SESSION['sPass']))    { sInt();  } else { $sPass    = $_SESSION['sPass'];}
+if (!isset($_SESSION['sEmail']))   { sInt();  } else { $sEmail   = $_SESSION['sEmail'];}
+if (!isset($_SESSION['sType']))    { sInt();  } else { $sType    = $_SESSION['sType'];}
+if (!isset($_SESSION['sTab']))     { sInt();  } else { $sTab     = $_SESSION['sTab'];}
+if (!isset($_SESSION['tzoffset'])) { sInt();  } else { $tzoffset = $_SESSION['tzoffset'];}
+if (!isset($_REQUEST['id']))       { sInt();  } else { $id       = $_REQUEST['id'];}
 
 // Kill the session if the ids dont match.
 if ($id != $_SESSION['id']) {
